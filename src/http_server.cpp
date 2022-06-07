@@ -23,6 +23,9 @@
 #include "sim_parser.h"
 #include "http_server.h"
 
+const char* EHTTPD_ROOT = "./www";
+const char* EHTTPD_ROOT_TAG = "/EHTTPD_ROOT_TAG";
+
 HttpMethod::HttpMethod(int code, std::string name) {
     _codes.insert(code);
     _names.insert(name);
@@ -58,7 +61,7 @@ std::string HttpMethod::get_names_str() {
 }
 
 HttpServer::HttpServer() {
-    _port = 3456; // default port 
+    _port = 3456; // default port
     _backlog = 10;
     _max_events = 1000;
     _pid = 0;
@@ -155,7 +158,7 @@ int HttpServer::add_mapping(std::string path, json_handler_ptr handler, HttpMeth
     (*_resource_map)[path] = res;
     return 0;
 }
-        
+
 int HttpServer::add_mapping(const std::string &path, HttpJsonHandler *handler, HttpMethod method) {
     if (_resource_map->count(path)) {
         LOG_ERROR("[http] add mapping fail, path repeated, path:%s", path.c_str());
@@ -231,10 +234,14 @@ HttpEpollWatcher::HttpEpollWatcher(std::map<std::string, Resource> *resource_map
 int HttpEpollWatcher::handle_request(Request &req, Response &res) {
     std::string uri = req.get_request_uri();
     if (this->_resource_map->find(uri) == this->_resource_map->end()) { // not found
+
+        if(this->_resource_map->find( EHTTPD_ROOT_TAG ) == this->_resource_map->end()){
         res._code_msg = STATUS_NOT_FOUND;
         res._body = STATUS_NOT_FOUND.msg;
         LOG_INFO("page not found which uri:%s", uri.c_str());
         return 0;
+	}
+	uri = EHTTPD_ROOT_TAG;
     }
 
     Resource resource = (*this->_resource_map)[req.get_request_uri()];
@@ -242,13 +249,17 @@ int HttpEpollWatcher::handle_request(Request &req, Response &res) {
     HttpMethod method = resource.method;
     if (method.get_names()->count(req._line.get_method()) == 0) {
         res._code_msg = STATUS_METHOD_NOT_ALLOWED;
-        std::string allow_names = method.get_names_str(); 
+        std::string allow_names = method.get_names_str();
         res.set_head("Allow", allow_names);
         res._body.clear();
-        LOG_INFO("not allow method, allowed:%s, request method:%s", 
+        LOG_INFO("not allow method, allowed:%s, request method:%s",
             allow_names.c_str(), req._line.get_method().c_str());
         return 0;
     }
+
+    res.set_head("Access-Control-Allow-Origin", "*");
+    res.set_head("Access-Control-Allow-Methods", "GET,POSTi,OPTIONS");
+    res.set_head("Access-Control-Allow-Headers", "*");
 
     if (resource.json_ptr != NULL) {
         Json::Value root;
@@ -261,7 +272,7 @@ int HttpEpollWatcher::handle_request(Request &req, Response &res) {
         resource.jh->action(req, root);
         res.set_body(root);
     }
-    LOG_DEBUG("handle response success which code:%d, msg:%s", 
+    LOG_DEBUG("handle response success which code:%d, msg:%s",
         res._code_msg.status_code, res._code_msg.msg.c_str());
     return 0;
 }
@@ -282,8 +293,8 @@ int HttpEpollWatcher::on_readable(int &epollfd, epoll_event &event) {
 
     int read_size = recv(fd, read_buffer, buffer_size, 0);
     if (read_size == -1 && errno == EINTR) {
-        return READ_CONTINUE; 
-    } 
+        return READ_CONTINUE;
+    }
     if (read_size == -1 /* io err*/|| read_size == 0 /* close */) {
         return READ_CLOSE;
     }
@@ -304,7 +315,7 @@ int HttpEpollWatcher::on_readable(int &epollfd, epoll_event &event) {
         http_context->get_res()._code_msg = STATUS_LENGTH_REQUIRED;
         http_context->get_res()._body = STATUS_LENGTH_REQUIRED.msg;
         return READ_OVER;
-    } 
+    }
 
     http_context->get_request().set_client_ip(&epoll_context->client_ip);
     this->handle_request(http_context->get_request(), http_context->get_res());

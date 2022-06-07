@@ -1,7 +1,6 @@
-# ehttp 
-![C/C++ CI](https://github.com/hongliuliao/ehttp/workflows/C/C++%20CI/badge.svg?branch=master)
-[![Build Status](https://travis-ci.org/hongliuliao/ehttp.svg?branch=master)](https://travis-ci.org/hongliuliao/ehttp)
-[![codecov.io](http://codecov.io/github/hongliuliao/ehttp/coverage.svg?branch=master)](http://codecov.io/github/hongliuliao/ehttp?branch=master)
+# ehttp
+![origin makefile project](https://github.com/hongliuliao/ehttp)
+![current cmake project](https://github.com/ausk/ehttp)
 
 This library make http (with json) microservice easy!
 
@@ -15,8 +14,11 @@ This library make http (with json) microservice easy!
 
 ## Build && Test
 ```
- make && make test && ./output/test/hello_server 3456
+# make && make test && ./output/test/hello_server 3456
+ mkdir -p build && cd build && cmake .. && make && ./test/hello_server 3456
+
  curl "localhost:3456/hello"
+ curl -d "name=tom&pwd=3" "localhost:3456/login"
 ```
 
 ## Function List
@@ -36,14 +38,14 @@ void login(Request &request, Json::Value &root) {
     std::string pwd = request.get_param("pwd");
 
     LOG_DEBUG("login user which name:%s, pwd:%s", name.c_str(), pwd.c_str());
-    
+
     root["code"] = 0;
     root["msg"] = "login success!";
 }
 
 int main() {
     HttpServer http_server;
-    
+
     http_server.add_mapping("/login", login, POST_METHOD);
 
     http_server.set_port(3456);
@@ -54,7 +56,7 @@ int main() {
 
 ## Run
 ```
-liao@ubuntu:~/workspace/ehttp$ curl -d "name=tom&pwd=3" "localhost:3456/login"
+ausk@ubuntu:~/projs/ehttp$ curl -d "name=tom&pwd=3" "localhost:3456/login"
 {"code":0,"msg":"login success!"}
 ```
 

@@ -24,7 +24,7 @@ void a_test_fn() {
 
 void hello(Request &request, Json::Value &root) {
 	root["hello"] = "world";
-    
+
     LOG_INFO("get client ip:%s", request.get_client_ip()->c_str());
     pthread_t t = pthread_self();
     int *tmp = (int*)pthread_getspecific(g_tp_key);
@@ -86,7 +86,7 @@ int main(int argc, char **args) {
     }
 
     pthread_key_create(&g_tp_key,NULL);
-    
+
     ThreadPool tp;
     tp.set_thread_start_cb(a_test_fn);
     tp.set_pool_size(4);
